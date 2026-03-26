@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Celeste Celaya — Arquitectura</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <style>
+    /* ─── TOKENS ─────────────────────────────────────────────── */
+    :root {
+      --black:    #08080a;
+      --deep:     #0f0f12;
+      --surface:  #141416;
+      --border:   #2a2820;
+      --gold:     #c4a96b;
+      --gold-dim: #7a6840;
+      --gold-glow:rgba(196,169,107,.12);
+      --white:    #e8e4db;
+      --muted:    #5a5648;
+      --ff-edit:  'Cormorant Garamond', serif;
+      --ff-mono:  'DM Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: var(--ff-edit);
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 1.25rem;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ─── GRAIN TEXTURE ──────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      background-size: 180px 180px;
+      opacity: .032;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── BLUEPRINT GRID (background) ───────────────────────── */
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── WRAPPER ────────────────────────────────────────────── */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    /* ─── HEADER ─────────────────────────────────────────────── */
+    .header {
+      text-align: center;
+      padding-bottom: 2.4rem;
+      position: relative;
+    }
+
+    .label-top {
+      font-family: var(--ff-mono);
+      font-size: .65rem;
+      font-weight: 300;
+      letter-spacing: .22em;
+      color: var(--gold-dim);
+      text-transform: uppercase;
+      margin-bottom: 1.1rem;
+      opacity: 0;
+    }
+
+    .name {
+      font-size: clamp(2.6rem, 9vw, 3.8rem);
+      font-weight: 300;
+      letter-spacing: .04em;
+      line-height: .95;
+      color: var(--white);
+      opacity: 0;
+    }
+
+    .name em {
+      font-style: normal;
+      color: var(--gold);
+    }
+
+    .discipline {
+      font-family: var(--ff-mono);
+      font-size: .7rem;
+      font-weight: 300;
+      letter-spacing: .35em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: .9rem;
+      opacity: 0;
+    }
+
+    /* ─── RULE: desenrolled line ─────────────────────────────── */
+    .rule-wrap {
+      position: relative;
+      height: 1px;
+      margin-bottom: 2.2rem;
+      overflow: hidden;
+    }
+
+    .rule-line {
+      position: absolute;
+      top: 0; left: 0;
+      height: 1px;
+      width: 100%;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      transform: scaleX(0);
+      transform-origin: left center;
+    }
+
+    .rule-tick {
+      position: absolute;
+      top: -3px;
+      width: 1px;
+      height: 7px;
+      background: var(--gold);
+      opacity: 0;
+    }
+    .rule-tick.left  { left: 0; }
+    .rule-tick.right { right: 0; }
+
+    /* ─── LINK CARDS ─────────────────────────────────────────── */
+    .links {
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+
+    .link-item {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+      opacity: 0;
+      clip-path: inset(0 100% 0 0);          /* blueprint unfold */
+      background: var(--surface);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color .35s ease;
+    }
+
+    .link-item::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, var(--gold-glow), transparent);
+      opacity: 0;
+      transition: opacity .35s ease;
+    }
+
+    .link-item:hover::before { opacity: 1; }
+    .link-item:hover { border-color: var(--gold-dim); }
+
+    /* accent bar */
+    .link-item .accent-bar {
+      flex-shrink: 0;
+      width: 3px;
+      height: 100%;
+      background: var(--gold);
+      opacity: .55;
+      position: absolute;
+      left: 0; top: 0;
+      transition: opacity .35s ease;
+    }
+    .link-item:hover .accent-bar { opacity: 1; }
+
+    .link-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 1.05rem 1.2rem 1.05rem 1.5rem;
+      gap: .75rem;
+    }
+
+    .link-left {
+      display: flex;
+      flex-direction: column;
+      gap: .2rem;
+    }
+
+    .link-tag {
+      font-family: var(--ff-mono);
+      font-size: .58rem;
+      font-weight: 300;
+      letter-spacing: .18em;
+      color: var(--gold-dim);
+      text-transform: uppercase;
+    }
+
+    .link-title {
+      font-family: var(--ff-edit);
+      font-size: 1.05rem;
+      font-weight: 300;
+      letter-spacing: .03em;
+      color: var(--white);
+      line-height: 1;
+    }
+
+    .link-sub {
+      font-family: var(--ff-mono);
+      font-size: .62rem;
+      font-weight: 300;
+      color: var(--muted);
+      margin-top: .15rem;
+    }
+
+    .link-arrow {
+      font-family: var(--ff-mono);
+      font-size: .75rem;
+      color: var(--gold);
+      opacity: .5;
+      flex-shrink: 0;
+      transition: transform .3s ease, opacity .3s ease;
+    }
+    .link-item:hover .link-arrow {
+      transform: translateX(4px);
+      opacity: 1;
+    }
+
+    /* ─── FOOTER ─────────────────────────────────────────────── */
+    .footer {
+      margin-top: 2.8rem;
+      text-align: center;
+      font-family: var(--ff-mono);
+      font-size: .58rem;
+      letter-spacing: .18em;
+      color: var(--muted);
+      text-transform: uppercase;
+      opacity: 0;
+    }
+
+    .footer span { color: var(--gold-dim); }
+
+    /* ─── CURSOR DOT ─────────────────────────────────────────── */
+    .cursor {
+      position: fixed;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--gold);
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%,-50%);
+      mix-blend-mode: difference;
+      transition: transform .1s ease;
+    }
+
+    @media (hover: none) { .cursor { display: none; } }
+
+    /* ─── CORNER MARKS (blueprint aesthetic) ────────────────── */
+    .corner {
+      position: fixed;
+      width: 18px; height: 18px;
+      border-color: var(--gold-dim);
+      border-style: solid;
+      opacity: .35;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .corner.tl { top: 20px; left: 20px;  border-width: 1px 0 0 1px; }
+    .corner.tr { top: 20px; right: 20px; border-width: 1px 1px 0 0; }
+    .corner.bl { bottom: 20px; left: 20px;  border-width: 0 0 1px 1px; }
+    .corner.br { bottom: 20px; right: 20px; border-width: 0 1px 1px 0; }
+  </style>
+</head>
+<body>
+
+  <!-- Blueprint corners -->
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <!-- Background grid -->
+  <div class="grid-bg" id="gridBg"></div>
+
+  <!-- Cursor -->
+  <div class="cursor" id="cursor"></div>
+
+  <div class="wrapper">
+
+    <!-- Header -->
+    <header class="header">
+      <p class="label-top" id="labelTop">ARQ · SALTA · ARG</p>
+      <h1 class="name" id="name">
+        <em>Celeste</em><br>Celaya
+      </h1>
+      <p class="discipline" id="discipline">Arquitectura &amp; Diseño</p>
+    </header>
+
+    <!-- Rule -->
+    <div class="rule-wrap" id="ruleWrap">
+      <div class="rule-line" id="ruleLine"></div>
+      <div class="rule-tick left"  id="tickL"></div>
+      <div class="rule-tick right" id="tickR"></div>
+    </div>
+
+    <!-- Links -->
+    <nav class="links" id="linksNav" aria-label="Links">
+
+      <a class="link-item" id="li0"
+         href="https://pablocelaya.github.io/portfolio-arquitectura/"
+         target="_blank" rel="noopener">
+        <div class="accent-bar"></div>
+        <div class="link-inner">
+          <div class="link-left">
+            <span class="link-tag">01 / Portafolio</span>
+            <span class="link-title">Ver Portafolio Interactivo</span>
+            <span class="link-sub">Flip-book de proyectos</span>
+          </div>
+          <span class="link-arrow">→</span>
+        </div>
+      </a>
+
+      <a class="link-item" id="li1"
+         href="https://www.behance.net/celestecelaya"
+         target="_blank" rel="noopener">
+        <div class="accent-bar"></div>
+        <div class="link-inner">
+          <div class="link-left">
+            <span class="link-tag">02 / Behance</span>
+            <span class="link-title">behance.net/celestecelaya</span>
+          </div>
+          <span class="link-arrow">→</span>
+        </div>
+      </a>
+
+      <a class="link-item" id="li2"
+         href="https://wa.me/5493874421631"
+         target="_blank" rel="noopener">
+        <div class="accent-bar"></div>
+        <div class="link-inner">
+          <div class="link-left">
+            <span class="link-tag">03 / WhatsApp</span>
+            <span class="link-title">+54 387 442-1631</span>
+            <span class="link-sub">Consultas &amp; proyectos</span>
+          </div>
+          <span class="link-arrow">→</span>
+        </div>
+      </a>
+
+      <a class="link-item" id="li3"
+         href="https://www.instagram.com/cece_arq"
+         target="_blank" rel="noopener">
+        <div class="accent-bar"></div>
+        <div class="link-inner">
+          <div class="link-left">
+            <span class="link-tag">04 / Instagram</span>
+            <span class="link-title">@cece_arq</span>
+          </div>
+          <span class="link-arrow">→</span>
+        </div>
+      </a>
+
+      <a class="link-item" id="li4"
+         href="https://www.linkedin.com/in/celestecelaya"
+         target="_blank" rel="noopener">
+        <div class="accent-bar"></div>
+        <div class="link-inner">
+          <div class="link-left">
+            <span class="link-tag">05 / LinkedIn</span>
+            <span class="link-title">Celeste Celaya</span>
+          </div>
+          <span class="link-arrow">→</span>
+        </div>
+      </a>
+
+      <a class="link-item" id="li5"
+         href="mailto:daiana28100@gmail.com">
+        <div class="accent-bar"></div>
+        <div class="link-inner">
+          <div class="link-left">
+            <span class="link-tag">06 / Email</span>
+            <span class="link-title">daiana28100@gmail.com</span>
+          </div>
+          <span class="link-arrow">→</span>
+        </div>
+      </a>
+
+    </nav>
+
+    <!-- Footer -->
+    <footer class="footer" id="footer">
+      Salta, Argentina &nbsp;·&nbsp; <span>2025</span>
+    </footer>
+
+  </div>
+
+  <script>
+    /* ─── CURSOR ─────────────────────────────────────────────── */
+    const cursor = document.getElementById('cursor');
+    document.addEventListener('mousemove', e => {
+      gsap.to(cursor, { x: e.clientX, y: e.clientY, duration: .15, ease: 'power2.out' });
+    });
+
+    /* ─── INTRO TIMELINE ─────────────────────────────────────── */
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+    // grid fade in
+    tl.to('#gridBg', { opacity: 1, duration: 1.2 }, 0);
+
+    // label
+    tl.to('#labelTop', { opacity: 1, y: 0, duration: .6 }, 0.3)
+      .fromTo('#labelTop', { y: 8 }, { y: 0 }, 0.3);
+
+    // name
+    tl.fromTo('#name', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .9 }, 0.55);
+
+    // discipline
+    tl.fromTo('#discipline', { opacity: 0 }, { opacity: 1, duration: .5 }, 1.0);
+
+    // rule — draws like a drafted line
+    tl.to('#ruleLine',  { scaleX: 1, duration: 1.1, ease: 'power2.inOut' }, 1.2);
+    tl.to(['#tickL','#tickR'], { opacity: 1, duration: .3 }, 1.8);
+
+    // link cards — clip-path unfold, staggered
+    const cards = ['#li0','#li1','#li2','#li3','#li4','#li5'];
+    tl.to(cards, {
+      opacity: 1,
+      clipPath: 'inset(0 0% 0 0)',
+      duration: .55,
+      stagger: .09,
+      ease: 'power2.out'
+    }, 1.55);
+
+    // footer
+    tl.to('#footer', { opacity: 1, duration: .5 }, 2.4);
+
+    /* ─── HOVER: subtle card shift ───────────────────────────── */
+    document.querySelectorAll('.link-item').forEach(item => {
+      item.addEventListener('mouseenter', () => {
+        gsap.to(item, { x: 3, duration: .25, ease: 'power2.out' });
+      });
+      item.addEventListener('mouseleave', () => {
+        gsap.to(item, { x: 0, duration: .3, ease: 'power2.out' });
+      });
+    });
+  </script>
+</body>
+</html>
